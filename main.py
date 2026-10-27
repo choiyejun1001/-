@@ -19,21 +19,19 @@ st.markdown("##### 🍕 **자연어 텍스트 명령어 자동 조종 + 3D 도�
 st.divider()
 
 # -------------------------------------------------------------------
-# 2. [신규 초특급 기능 1] AI 드론 조종사 자연어 명령어 입력창
+# 2. AI 드론 조종사 자연어 명령어 입력창
 # -------------------------------------------------------------------
 st.subheader("🤖 1. AI 드론 조종사 자연어 음성/텍스트 제어기")
 st.caption("예시 입력: '피자 4km 배달해줘 맞바람 6m 불어' / '아이스크림 2km 배달 야외 기온 30도'")
 
 user_command = st.text_input("💬 AI 명령어를 입력하세요 (입력 후 Enter):", placeholder="예: 피자 3km 배달해줘 풍속 5m 야외기온 25도")
 
-# 자연어 명령 해석 (기본값 설정)
 parsed_food = "🍕 따뜻한 피자/치킨"
 parsed_dist = 3.0
 parsed_wind = 4.0
 parsed_temp = 22
 
 if user_command:
-    # 1) 음식 파싱
     if "아이스크림" in user_command:
         parsed_food = "🍦 시원한 아이스크림"
     elif "커피" in user_command or "아메리카노" in user_command:
@@ -41,7 +39,6 @@ if user_command:
     elif "피자" in user_command or "치킨" in user_command:
         parsed_food = "🍕 따뜻한 피자/치킨"
 
-    # 2) 숫자 추출 (거리, 풍속, 기온)
     dist_match = re.search(r'(\d+(\.\d+)?)\s*km', user_command)
     if dist_match:
         parsed_dist = float(dist_match.group(1))
@@ -59,7 +56,7 @@ if user_command:
 st.divider()
 
 # -------------------------------------------------------------------
-# 3. 사이드바 수동 세팅 (AI 연동)
+# 3. 사이드바 수동 세팅
 # -------------------------------------------------------------------
 st.sidebar.header("⚙️ 관제 수동 세팅")
 
@@ -93,7 +90,6 @@ if distance_km == 0:
 elif wind_speed > max_wind_limit:
     st.error(f"🚨 **[강풍 경보]** 풍속({wind_speed}m/s)이 드론 안전 한계를 초과하여 추락 위험이 높습니다!")
 else:
-    # 삼각함수 물리 연산
     dx = target_x - start_x
     dy = target_y - start_y
     flight_angle = np.arctan2(dy, dx)
@@ -109,9 +105,9 @@ else:
     extra_cost = int(battery_used * 15)
 
     # -------------------------------------------------------------------
-    # 5. 실시간 상태 대시보드
+    # 5. 대시보드 및 실생활 예측
     # -------------------------------------------------------------------
-    st.subheader("📊 2. 실시간 비행 연비 대시보드")
+    st.subheader("📊 2. 비행 대시보드 & 실생활 예측")
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("총 비행 거리", f"{distance_km:.2f} km")
     c2.metric("예상 비행시간", f"{flight_time_min:.1f} 분")
@@ -120,12 +116,7 @@ else:
 
     st.divider()
 
-    # -------------------------------------------------------------------
-    # 6. 실생활 예측 (음식 신선도 & 추락 충격량)
-    # -------------------------------------------------------------------
-    st.subheader("🍱 3. 배달 상태 & 추락 파괴력 체감 예측")
     f_col1, f_col2 = st.columns(2)
-    
     with f_col1:
         if "아이스크림" in food_type:
             if flight_time_min > 6.0 or outside_temp > 25:
@@ -153,29 +144,34 @@ else:
     st.divider()
 
     # -------------------------------------------------------------------
-    # 7. [신규 초특급 기능 2] 3D 도심 빌딩 숲 & 회전 비행 궤도 시각화
+    # ⚙️ 6. 3D 시각화 파트 (오류 완벽 수정 반영!)
     # -------------------------------------------------------------------
-    st.subheader("🏢 4. 3D 도심 빌딩 숲 & 입체 비행 궤도 시각화")
-    st.caption("💡 Matplotlib 3D 뷰어: 그래프를 마우스로 자유롭게 클릭·드래그하면 360도 입체 관전이 가능합니다.")
-
-    fig = plt.figure(figsize=(9, 6))
+    st.subheader("🏢 3. 3D 도심 빌딩 숲 & 입체 비행 궤도 시각화")
+    
+    # Matplotlib 스타일 고정 (배경 흰색으로 강제하여 선명하게 렌더링)
+    fig = plt.figure(figsize=(10, 6), facecolor='white')
     ax = fig.add_subplot(111, projection='3d')
+    ax.set_facecolor('white')
 
-    # 3D 빌딩 생성 함수
-    def draw_building(ax, x, y, dx, dy, dz, color='gray'):
-        xx = [x, x+dx, x+dx, x, x, x+dx, x+dx, x]
-        yy = [y, y, y+dy, y+dy, y, y, y+dy, y+dy]
-        zz = [0, 0, 0, 0, dz, dz, dz, dz]
-        vertices = [
-            [0,1,2,3], [4,5,6,7], 
-            [0,1,5,4], [2,3,7,6], 
-            [1,2,6,5], [4,7,3,0]
+    # 3D 입체 건물 생성 함수
+    def draw_building(ax, x, y, dx, dy, dz, color='#888888'):
+        x2, y2 = x + dx, y + dy
+        nodes = np.array([
+            [x, y, 0], [x2, y, 0], [x2, y2, 0], [x, y2, 0],
+            [x, y, dz], [x2, y, dz], [x2, y2, dz], [x, y2, dz]
+        ])
+        faces = [
+            [nodes[0], nodes[1], nodes[2], nodes[3]],
+            [nodes[4], nodes[5], nodes[6], nodes[7]],
+            [nodes[0], nodes[1], nodes[5], nodes[4]],
+            [nodes[2], nodes[3], nodes[7], nodes[6]],
+            [nodes[1], nodes[2], nodes[6], nodes[5]],
+            [nodes[4], nodes[7], nodes[3], nodes[0]]
         ]
-        faces = [[(xx[i], yy[i], zz[i]) for i in face] for face in vertices]
-        poly = Poly3DCollection(faces, facecolors=color, linewidths=0.5, edgecolors='black', alpha=0.5)
+        poly = Poly3DCollection(faces, facecolors=color, linewidths=1, edgecolors='black', alpha=0.7)
         ax.add_collection3d(poly)
 
-    # 3D 도심 빌딩 숲 배치 (X, Y, dx, dy, 높이m)
+    # 도심 건물 배치 (X, Y, dx, dy, 높이m)
     buildings = [
         (1.2, 1.0, 0.8, 0.8, 45),
         (2.5, 3.0, 1.0, 0.7, 75),
@@ -184,19 +180,14 @@ else:
         (4.0, 2.5, 0.8, 0.8, 65)
     ]
     for b in buildings:
-        draw_building(ax, *b, color='lightslategrey')
+        draw_building(ax, *b, color='#7f8c8d')
 
-    # 3D 입체 경로 궤적 (이륙 -> 비행 -> 착륙)
-    steps = 30
+    # 3D 입체 궤적 계산
+    steps = 40
     x_path = np.linspace(start_x, target_x, steps)
     y_path = np.linspace(start_y, target_y, steps)
     z_path = np.full(steps, float(flight_alt))
-    z_path[:5] = np.linspace(0, flight_alt, 5)   # 이륙
-    z_path[-5:] = np.linspace(flight_alt, 0, 5)  # 착륙
+    z_path[:8] = np.linspace(0, flight_alt, 8)    # 이륙
+    z_path[-8:] = np.linspace(flight_alt, 0, 8)   # 착륙
 
-    # 3D 선 및 점 그리기
-    ax.plot(x_path, y_path, z_path, color='crimson', linewidth=3, label="3D Flight Path")
-    ax.scatter(start_x, start_y, 0, color='green', s=100, label="Start (Takeoff)")
-    ax.scatter(target_x, target_y, 0, color='red', s=100, label="Target (Landing)")
-
-    # 바람 방향 3D 화살표 (Vector)
+    # 3D 비행선 및 좌표
