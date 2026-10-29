@@ -17,7 +17,7 @@ st.markdown("##### 🍕 **자유로운 배달 음식 입력 + 자연어 자동 �
 st.divider()
 
 # -------------------------------------------------------------------
-# 💡 세션 상태(Session State) 초기화 (피자로 되돌아가는 현상 완벽 방지)
+# 2. 세션 상태(Session State) 고정 세팅
 # -------------------------------------------------------------------
 if "food_name" not in st.session_state:
     st.session_state.food_name = "마라탕"
@@ -29,18 +29,19 @@ if "parsed_temp" not in st.session_state:
     st.session_state.parsed_temp = 22
 
 # -------------------------------------------------------------------
-# 2. AI 드론 조종사 자연어 명령어 입력창
+# 3. AI 드론 조종사 자연어 명령어 입력창
 # -------------------------------------------------------------------
 st.subheader("🤖 1. AI 드론 조종사 자연어 음성/텍스트 제어기")
-st.caption("예시 입력: '마라탕 4km 배달해줘 맞바람 6m 불어' / '배스킨라빈스 아이스크림 2km 배달 야외 기온 30도'")
+st.caption("예시 입력: '초밥 4km 배달해줘 맞바람 6m 불어' / '배스킨라빈스 아이스크림 2km 배달 야외 기온 30도'")
 
 user_command = st.text_input(
     "💬 AI 명령어를 자유롭게 입력하세요 (입력 후 Enter):", 
     placeholder="예: 갓 튀긴 탕수육 3.5km 배달해줘 풍속 5m 야외기온 25도"
 )
 
+# AI 문장 해석 연산
 if user_command:
-    # 1) 수치 파싱 (거리, 풍속, 기온)
+    # 수치 파싱 (거리, 풍속, 기온)
     dist_match = re.search(r'(\d+(\.\d+)?)\s*km', user_command)
     if dist_match:
         st.session_state.parsed_dist = float(dist_match.group(1))
@@ -53,7 +54,7 @@ if user_command:
     if temp_match:
         st.session_state.parsed_temp = int(temp_match.group(1))
 
-    # 2) 음식명 파싱 (불필요한 수치 및 명령어 단어 제거)
+    # 음식명 파싱
     temp_cmd = user_command
     temp_cmd = re.sub(r'(\d+(\.\d+)?)\s*(km|m|m/s|도|°C)', '', temp_cmd)
     stop_words = ["배달해줘", "배달", "해줘", "풍속", "맞바람", "야외", "기온", "현재", "바람", "불어"]
@@ -69,13 +70,13 @@ if user_command:
 st.divider()
 
 # -------------------------------------------------------------------
-# 3. 사이드바 세팅 (자유 커스텀 입력 지원)
+# 4. 사이드바 수동 관제 세팅
 # -------------------------------------------------------------------
 st.sidebar.header("⚙️ 관제 수동 세팅")
 
-# 💡 세션에 저장된 값을 가져와서 직접 수정도 가능하게 함
-custom_food_input = st.sidebar.text_input("📦 배달할 음식 직접 수정/입력", value=st.session_state.food_name)
-st.session_state.food_name = custom_food_input.strip() if custom_food_input.strip() else "배달 음식"
+# 직접 입력받는 상자 (AI 파싱값과 동기화)
+manual_food = st.sidebar.text_input("📦 배달할 음식 직접 입력/수정", key="food_input_box", value=st.session_state.food_name)
+st.session_state.food_name = manual_food if manual_food.strip() else "배달 음식"
 
 st.sidebar.subheader("📍 비행 경로 설정")
 start_lat, start_lon = 37.5665, 126.9780 # 서울시청 기준
@@ -92,7 +93,7 @@ max_speed = 12.0
 max_wind_limit = 12.0
 
 # -------------------------------------------------------------------
-# 4. 연산 및 메트릭
+# 5. 연산 및 대시보드
 # -------------------------------------------------------------------
 distance_km = target_dist
 distance_m = distance_km * 1000.0
@@ -113,7 +114,7 @@ c4.metric("바람 손실 비용", f"약 {extra_cost} 원")
 st.divider()
 
 # -------------------------------------------------------------------
-# 5. 동적 음식 상태 판정 알고리즘
+# 6. 음식 상태 판정 알고리즘
 # -------------------------------------------------------------------
 food_name = st.session_state.food_name
 
@@ -121,7 +122,6 @@ f_col1, f_col2 = st.columns(2)
 with f_col1:
     st.write(f"🍱 **[{food_name}] 실시간 상태 및 온습도 예측**")
     
-    # 키워드 기반 차가운 음식 / 따뜻한 음식 자동 구분
     cold_keywords = ["아이스", "빙수", "스무디", "냉면", "회", "초밥", "아이스크림", "주스", "음료"]
     is_cold = any(kw in food_name for kw in cold_keywords)
 
@@ -152,7 +152,7 @@ with f_col2:
 st.divider()
 
 # -------------------------------------------------------------------
-# 6. Streamlit 3D 도심 지도 렌더링
+# 7. 3D 도심 지도 렌더링 (Streamlit 내장 3D)
 # -------------------------------------------------------------------
 st.subheader("🏢 3. 3D 도심 빌딩 숲 & 입체 비행 궤도 시각화")
 st.caption("💡 마우스 우클릭 드래그로 3차원 화면 각도를 조절하고, 휠로 확대/축소하세요!")
