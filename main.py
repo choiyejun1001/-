@@ -13,30 +13,30 @@ st.set_page_config(
 )
 
 st.title("🚁 AI 기반 UAM 3D 도심 드론 관제 & 실생활 안전 시뮬레이터")
-st.markdown("##### 🍕 **자연어 텍스트 명령어 자동 조종 + 3D 도심 빌딩 숲 실시간 관제**")
+st.markdown("##### 🍕 **자유로운 배달 음식 입력 + 자연어 자동 조종 + 3D 도심 관제 시각화**")
 st.divider()
 
 # -------------------------------------------------------------------
 # 2. AI 드론 조종사 자연어 명령어 입력창
 # -------------------------------------------------------------------
 st.subheader("🤖 1. AI 드론 조종사 자연어 음성/텍스트 제어기")
-st.caption("예시 입력: '피자 4km 배달해줘 맞바람 6m 불어' / '아이스크림 2km 배달 야외 기온 30도'")
+st.caption("예시 입력: '마라탕 4km 배달해줘 맞바람 6m 불어' / '배스킨라빈스 아이스크림 2km 배달 야외 기온 30도'")
 
-user_command = st.text_input("💬 AI 명령어를 입력하세요 (입력 후 Enter):", placeholder="예: 피자 3km 배달해줘 풍속 5m 야외기온 25도")
+user_command = st.text_input("💬 AI 명령어를 자유롭게 입력하세요 (입력 후 Enter):", placeholder="예: 갓 튀긴 탕수육 3.5km 배달해줘 풍속 5m 야외기온 25도")
 
-parsed_food = "🍕 따뜻한 피자/치킨"
+parsed_food = "갓 구운 피자"
 parsed_dist = 3.0
 parsed_wind = 4.0
 parsed_temp = 22
 
 if user_command:
-    if "아이스크림" in user_command:
-        parsed_food = "🍦 시원한 아이스크림"
-    elif "커피" in user_command or "아메리카노" in user_command:
-        parsed_food = "☕ 따뜻한 아메리카노"
-    elif "피자" in user_command or "치킨" in user_command:
-        parsed_food = "🍕 따뜻한 피자/치킨"
+    # 1) 음식명 추출 (거리/풍속/기온 키워드 제외한 단어)
+    clean_cmd = re.sub(r'(\d+(\.\d+)?)\s*(km|m|도)', '', user_command)
+    clean_cmd = re.sub(r'(배달|해줘|풍속|맞바람|야외|기온|현재)', '', clean_cmd).strip()
+    if clean_cmd:
+        parsed_food = clean_cmd
 
+    # 2) 수치 파싱
     dist_match = re.search(r'(\d+(\.\d+)?)\s*km', user_command)
     if dist_match:
         parsed_dist = float(dist_match.group(1))
@@ -49,21 +49,21 @@ if user_command:
     if temp_match:
         parsed_temp = int(temp_match.group(1))
 
-    st.success(f"🤖 **[AI 명령어 해석 완료]** 음식: **{parsed_food}** | 거리: **{parsed_dist}km** | 풍속: **{parsed_wind}m/s** | 기온: **{parsed_temp}°C**")
+    st.success(f"🤖 **[AI 명령어 해석 완료]** 음식: **'{parsed_food}'** | 거리: **{parsed_dist}km** | 풍속: **{parsed_wind}m/s** | 기온: **{parsed_temp}°C**")
 
 st.divider()
 
 # -------------------------------------------------------------------
-# 3. 사이드바 세팅
+# 3. 사이드바 세팅 (자유 커스텀 입력 지원!)
 # -------------------------------------------------------------------
 st.sidebar.header("⚙️ 관제 수동 세팅")
 
-food_list = ["🍕 따뜻한 피자/치킨", "🍦 시원한 아이스크림", "☕ 따뜻한 아메리카노"]
-food_index = food_list.index(parsed_food) if parsed_food in food_list else 0
-food_type = st.sidebar.selectbox("📦 배달 음식", food_list, index=food_index)
+# 💡 선택지가 아닌 직접 입력 가능한 텍스트 상자!
+custom_food_input = st.sidebar.text_input("📦 배달할 음식 직접 입력", value=parsed_food)
+food_name = custom_food_input if custom_food_input else "배달 음식"
 
 st.sidebar.subheader("📍 비행 경로 설정")
-start_lat, start_lon = 37.5665, 126.9780 # 서울시청 기준 좌표
+start_lat, start_lon = 37.5665, 126.9780 # 서울시청 기준
 target_dist = float(parsed_dist)
 
 flight_alt = st.sidebar.slider("드론 비행 고도 (m)", 20, 150, 80, 5)
@@ -97,22 +97,35 @@ c4.metric("바람 손실 비용", f"약 {extra_cost} 원")
 
 st.divider()
 
+# -------------------------------------------------------------------
+# 5. 🔥 동적 음식 상태 판정 알고리즘 (어떤 음식이든 예측 가능!)
+# -------------------------------------------------------------------
 f_col1, f_col2 = st.columns(2)
 with f_col1:
-    if "아이스크림" in food_type:
+    st.write(f"🍱 **[{food_name}] 실시간 상태 및 온습도 예측**")
+    
+    # 키워드 기반 차가운 음식 / 따뜻한 음식 / 일반 음식 자동 분류
+    cold_keywords = ["아이스", "빙수", "스무디", "냉면", "회", "초밥", "아이스크림"]
+    
+    is_cold = any(kw in food_name for kw in cold_keywords)
+
+    if is_cold:
+        # 차가운 음식 판정
         if flight_time_min > 6.0 or outside_temp > 25:
-            st.error("🫠 **[상태: 완전 융해]** 비행 지연으로 아이스크림이 녹아 국물이 됩니다.")
-            freshness = 15
+            st.error(f"🫠 **[상태: 변질/융해]** 비행 지연({flight_time_min:.1f}분) 및 높은 기온({outside_temp}°C)으로 인해 **{food_name}**이(가) 미지근해지거나 녹아 버립니다!")
+            freshness = 20
         else:
-            st.success("🍦 **[상태: 최상]** 꽁꽁 언 상태로 안전하게 배달됩니다!")
+            st.success(f"❄️ **[상태: 최상]** 차가운 상태 그대로 **{food_name}** 배달 성공!")
             freshness = 95
     else:
-        if flight_time_min > 8.0:
-            st.warning("🍕 **[상태: 식음]** 도착 시 치즈가 식어 맛이 떨어질 수 있습니다.")
+        # 따뜻한/일반 음식 판정
+        if flight_time_min > 8.0 or outside_temp < 5:
+            st.warning(f"❄️ **[상태: 식음]** 비행 지연으로 인해 **{food_name}**의 온도가 낮아져 음식이 식습니다.")
             freshness = 50
         else:
-            st.success("🔥 **[상태: 갓 구움]** 따끈따끈한 상태로 유지됩니다!")
+            st.success(f"🔥 **[상태: 갓 만듦]** 따끈따끈하고 맛있는 상태로 **{food_name}** 배달 완결!")
             freshness = 98
+
     st.progress(freshness)
 
 with f_col2:
@@ -125,12 +138,11 @@ with f_col2:
 st.divider()
 
 # -------------------------------------------------------------------
-# 5. 🔥 Streamlit 전용 3D 도심 지도 렌더링 (100% 작동 보장)
+# 6. Streamlit 3D 도심 지도 렌더링
 # -------------------------------------------------------------------
 st.subheader("🏢 3. 3D 도심 빌딩 숲 & 입체 비행 궤도 시각화")
 st.caption("💡 마우스 우클릭 드래그로 3차원 화면 각도를 조절하고, 휠로 확대/축소하세요!")
 
-# 도심 3D 건물 데이터
 building_data = [
     {"name": "빌딩 A", "coordinates": [126.9770, 37.5660], "height": 60, "color": [120, 140, 160]},
     {"name": "빌딩 B", "coordinates": [126.9790, 37.5670], "height": 110, "color": [100, 120, 150]},
@@ -138,7 +150,6 @@ building_data = [
     {"name": "빌딩 D", "coordinates": [126.9800, 37.5650], "height": 70, "color": [110, 130, 140]},
 ]
 
-# 3D 드론 비행 궤적 데이터
 target_lon = start_lon + (distance_km * 0.008)
 target_lat = start_lat + (distance_km * 0.005)
 
@@ -149,7 +160,6 @@ path_coords = [
     [target_lon, target_lat, 0]
 ]
 
-# PyDeck 3D Layer 설정
 building_layer = pdk.Layer(
     "ColumnLayer",
     data=building_data,
@@ -166,7 +176,7 @@ path_layer = pdk.Layer(
     "PathLayer",
     data=[{"path": path_coords}],
     get_path="path",
-    get_color=[255, 50, 50, 255], # 빨간색 3D 비행선
+    get_color=[255, 50, 50, 255],
     width_scale=5,
     width_min_pixels=3,
 )
@@ -175,11 +185,10 @@ view_state = pdk.ViewState(
     latitude=start_lat + 0.003,
     longitude=start_lon + 0.003,
     zoom=14.5,
-    pitch=55, # 3D 기울기
-    bearing=30 # 3D 회전각
+    pitch=55,
+    bearing=30
 )
 
-# 3D 맵 출력
 st.pydeck_chart(
     pdk.Deck(
         layers=[building_layer, path_layer],
